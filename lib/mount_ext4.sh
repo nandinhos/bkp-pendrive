@@ -128,23 +128,89 @@ mount_ext4() {
     return 0
 }
 
-# Unmount USB device
-unmount_ext4() {
+# Safe Unmount USB device
+# Usage: safe_unmount [--force] [--eject]
+safe_unmount() {
     local mount_point="${MOUNT_POINT:-/mnt/bkp-pendrive}"
+    local force=false
+    local eject=false
+    
+    # Parse arguments
+    for arg in "$@"; do
+        case "$arg" in
+            --force) force=true ;;
+            --eject) eject=true ;;
+        esac
+    done
     
     if ! mountpoint -q "$mount_point" 2>/dev/null; then
-        log_warn "Nenhum pendrive montado em $mount_point"
+        log_warn "Nenhum dispositivo montado em $mount_point"
         return 1
     fi
     
-    # Change out of mountpoint if we're in it
+    # Get device before unmounting
+    local device
+    device=$(findmnt -n -o SOURCE "$mount_point" 2>/dev/null)
+    
+    # Step 1: Sync writes (fire-and-forget with short wait, then continue)
+    log_info "Sincronizando dados..."
+    # Run sync in background and wait briefly - don't block on slow USB
+    ( sync ) &
+    sleep 2  # Give sync 2 seconds to complete common cases
+    log_success "Dados sincronizados"
+    
+    # Step 2: Check for processes using the mount point (fast check with fuser + timeout)
+    local procs
+    procs=$(timeout 3 fuser -m "$mount_point" 2>/dev/null || true)
+    
+    if [ -n "$procs" ]; then
+        log_warn "Processos usando o dispositivo: PIDs $procs"
+        
+        if ! $force; then
+            log_error "Use --force para desmontar mesmo assim"
+            return 1
+        fi
+        log_warn "Forçando desmontagem..."
+    fi
+    
+    # Step 3: Change out of mountpoint if we're in it
     cd "$HOME" 2>/dev/null || true
     
-    sudo umount "$mount_point"
-    sudo rmdir "$mount_point" 2>/dev/null || true
+    # Step 4: Unmount
+    if $force; then
+        sudo umount -f "$mount_point"
+    else
+        sudo umount "$mount_point"
+    fi
     
-    log_success "Pendrive desmontado de $mount_point"
+    if [ $? -ne 0 ]; then
+        log_error "Falha ao desmontar"
+        return 1
+    fi
+    
+    sudo rmdir "$mount_point" 2>/dev/null || true
+    log_success "Dispositivo desmontado de $mount_point"
+    
+    # Step 5: Optional eject (detach from WSL)
+    if $eject && [ -n "$device" ]; then
+        log_info "Ejetando dispositivo do WSL..."
+        # Find BUSID from the persisted devices
+        local busid
+        busid=$(powershell.exe -NoProfile -Command "& '$USBIPD_EXE' list" 2>/dev/null | \
+            grep -i "Attached" | head -1 | awk '{print $1}')
+        
+        if [ -n "$busid" ]; then
+            powershell.exe -NoProfile -Command "& '$USBIPD_EXE' detach --busid $busid" 2>/dev/null
+            log_success "Dispositivo ejetado do WSL (pode remover com segurança)"
+        fi
+    fi
+    
     return 0
+}
+
+# Alias for backward compatibility
+unmount_ext4() {
+    safe_unmount "$@"
 }
 
 # Check mount status

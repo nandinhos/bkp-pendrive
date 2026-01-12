@@ -57,13 +57,16 @@ show_help() {
     echo "  bkp-pendrive <comando> [opções]"
     echo
     echo -e "\033[1mComandos:\033[0m"
-    echo "  up, mount       Anexa e monta o pendrive"
-    echo "  down, unmount   Desmonta o pendrive"
+    echo "  up, mount       Anexa e monta o dispositivo"
+    echo "  down, unmount   Desmonta o dispositivo"
     echo "  status          Mostra status atual"
+    echo "  check           Verifica integridade do ambiente"
     echo "  help            Mostra esta ajuda"
     echo
     echo -e "\033[1mOpções:\033[0m"
     echo "  --simulate      Modo simulação (sem hardware)"
+    echo "  --force         Força desmontagem mesmo com processos ativos"
+    echo "  --eject         Ejeta o dispositivo do WSL após desmontar"
     echo
     echo -e "\033[1mExemplo:\033[0m"
     echo "  bkp-pendrive up"
@@ -75,10 +78,14 @@ show_help() {
 # Parse args
 # =========================
 COMMAND=""
+EXTRA_FLAGS=()
 for arg in "$@"; do
     case "$arg" in
         --simulate)
             SIMULATE_MODE=true
+            ;;
+        --force|--eject)
+            EXTRA_FLAGS+=("$arg")
             ;;
         *)
             if [ -z "$COMMAND" ]; then
@@ -197,15 +204,17 @@ cmd_up() {
 }
 
 cmd_down() {
-    print_step "Desmontando pendrive..."
+    print_step "Desmontando dispositivo..."
     
     if $SIMULATE_MODE; then
+        log_info "[SIMULATE] Sincronizando dados..."
         log_info "[SIMULATE] Desmontando $MOUNT_POINT..."
-        log_success "[SIMULATE] Pendrive desmontado"
+        log_success "[SIMULATE] Dispositivo desmontado"
         return 0
     fi
     
-    unmount_ext4
+    # Pass through any flags (--force, --eject)
+    safe_unmount "${EXTRA_FLAGS[@]}"
 }
 
 cmd_status() {
@@ -229,6 +238,9 @@ case "$COMMAND" in
         ;;
     status)
         cmd_status
+        ;;
+    check)
+        run_health_check
         ;;
     help|"")
         show_help
