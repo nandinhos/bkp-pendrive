@@ -1,0 +1,240 @@
+#!/usr/bin/env bash
+# bkp-pendrive - CLI for mounting EXT4 USB drives in WSL2
+set -e
+
+# =========================
+# Resolve paths (follow symlinks)
+# =========================
+get_real_path() {
+    local path="$1"
+    # Follow symlink if it is one
+    while [ -L "$path" ]; do
+        path=$(readlink "$path")
+    done
+    echo "$path"
+}
+
+REAL_SCRIPT=$(get_real_path "${BASH_SOURCE[0]}")
+SCRIPT_DIR="$(cd "$(dirname "$REAL_SCRIPT")" && pwd)"
+PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
+
+# =========================
+# Source libraries
+# =========================
+source "$PROJECT_ROOT/lib/logging.sh"
+source "$PROJECT_ROOT/lib/tui.sh"
+source "$PROJECT_ROOT/lib/checks.sh"
+source "$PROJECT_ROOT/lib/usbipd.sh"
+source "$PROJECT_ROOT/lib/mount_ext4.sh"
+
+# =========================
+# Load config
+# =========================
+CONFIG_FILE="$HOME/.config/bkp-pendrive/config"
+if [ -f "$CONFIG_FILE" ]; then
+    source "$CONFIG_FILE"
+fi
+
+# Defaults
+MOUNT_POINT="${MOUNT_POINT:-/mnt/bkp-pendrive}"
+PENDRIVE_LABEL="${PENDRIVE_LABEL:-}"
+SIMULATE_MODE=false
+
+# =========================
+# Version
+# =========================
+VERSION=$(cat "$PROJECT_ROOT/VERSION" 2>/dev/null || echo "dev")
+
+# =========================
+# Help
+# =========================
+show_help() {
+    echo -e "\033[1mbkp-pendrive\033[0m v$VERSION"
+    echo
+    echo "Ferramenta para montar pendrives EXT4 no WSL2"
+    echo
+    echo -e "\033[1mUso:\033[0m"
+    echo "  bkp-pendrive <comando> [opções]"
+    echo
+    echo -e "\033[1mComandos:\033[0m"
+    echo "  up, mount       Anexa e monta o pendrive"
+    echo "  down, unmount   Desmonta o pendrive"
+    echo "  status          Mostra status atual"
+    echo "  help            Mostra esta ajuda"
+    echo
+    echo -e "\033[1mOpções:\033[0m"
+    echo "  --simulate      Modo simulação (sem hardware)"
+    echo
+    echo -e "\033[1mExemplo:\033[0m"
+    echo "  bkp-pendrive up"
+    echo "  ls $MOUNT_POINT"
+    echo "  bkp-pendrive down"
+}
+
+# =========================
+# Parse args
+# =========================
+COMMAND=""
+for arg in "$@"; do
+    case "$arg" in
+        --simulate)
+            SIMULATE_MODE=true
+            ;;
+        *)
+            if [ -z "$COMMAND" ]; then
+                COMMAND="$arg"
+            fi
+            ;;
+    esac
+done
+
+# =========================
+# Commands
+# =========================
+cmd_up() {
+    print_step "Iniciando montagem do pendrive..."
+    
+    if $SIMULATE_MODE; then
+        log_info "[SIMULATE] Verificando usbipd-win..."
+        log_info "[SIMULATE] Anexando USB ao WSL..."
+        log_info "[SIMULATE] Detectando dispositivo USB..."
+        log_success "[SIMULATE] Pendrive montado em $MOUNT_POINT"
+        return 0
+    fi
+    
+    # Check WSL
+    check_wsl
+    
+    # Check/require usbipd
+    if ! require_usbipd; then
+        exit 1
+    fi
+    
+    # Show available USB devices
+    log_info "Dispositivos USB no Windows:"
+    list_usb_devices
+    echo
+    
+    # Try to detect if USB device is already in WSL
+    log_info "Verificando dispositivo USB no WSL..."
+    local device=""
+    
+    if [ -n "$PENDRIVE_LABEL" ]; then
+        device=$(detect_device_by_label "$PENDRIVE_LABEL" || true)
+    fi
+    
+    if [ -z "$device" ]; then
+        device=$(detect_usb_device || true)
+    fi
+    
+    # If not found, try to auto-attach from Windows
+    if [ -z "$device" ]; then
+        log_warn "Dispositivo nao encontrado no WSL."
+        log_info "Tentando anexar automaticamente via usbipd..."
+        
+        # Find USB Mass Storage device in usbipd list and get its BUSID
+        local busid
+        busid=$(powershell.exe -NoProfile -Command "& '$USBIPD_EXE' list" 2>/dev/null | \
+            grep -i "Mass Storage\|Armazenamento" | \
+            head -1 | \
+            awk '{print $1}')
+        
+        if [ -n "$busid" ]; then
+            log_info "Encontrado dispositivo USB (BUSID=$busid)"
+            log_info "Anexando ao WSL..."
+            
+            # Try attach first (works if already bound)
+            local attach_output
+            attach_output=$(powershell.exe -NoProfile -Command "& '$USBIPD_EXE' attach --wsl --busid $busid" 2>&1 || true)
+            
+            if echo "$attach_output" | grep -qi "not shared\|bind"; then
+                # Device needs to be bound first (requires admin)
+                echo
+                log_warn "Dispositivo precisa ser registrado (bind) no Windows."
+                echo
+                echo "=========================================="
+                echo "  Execute no PowerShell como ADMIN:"
+                echo ""
+                echo "    usbipd bind --busid $busid"
+                echo ""
+                echo "  Apos executar, pressione ENTER..."
+                echo "=========================================="
+                read -r
+                
+                # Try attach again
+                log_info "Tentando anexar novamente..."
+                powershell.exe -NoProfile -Command "& '$USBIPD_EXE' attach --wsl --busid $busid" 2>&1
+            fi
+            
+            # Wait a moment for device to appear
+            sleep 2
+            
+            # Try detection again
+            if [ -n "$PENDRIVE_LABEL" ]; then
+                device=$(detect_device_by_label "$PENDRIVE_LABEL" || true)
+            fi
+            if [ -z "$device" ]; then
+                device=$(detect_usb_device || true)
+            fi
+        fi
+    fi
+    
+    if [ -z "$device" ]; then
+        log_error "Nenhum dispositivo USB encontrado no WSL."
+        echo
+        log_info "Tente manualmente no PowerShell (Admin):"
+        log_info "  usbipd list"
+        log_info "  usbipd bind --busid <BUSID>"
+        log_info "  usbipd attach --wsl --busid <BUSID>"
+        exit 1
+    fi
+    
+    log_success "Dispositivo detectado: $device"
+    
+    # Mount
+    mount_ext4 "$device"
+}
+
+cmd_down() {
+    print_step "Desmontando pendrive..."
+    
+    if $SIMULATE_MODE; then
+        log_info "[SIMULATE] Desmontando $MOUNT_POINT..."
+        log_success "[SIMULATE] Pendrive desmontado"
+        return 0
+    fi
+    
+    unmount_ext4
+}
+
+cmd_status() {
+    echo -e "\033[1mbkp-pendrive\033[0m v$VERSION"
+    echo
+    check_mount_status
+    echo
+    echo "Mount point: $MOUNT_POINT"
+    [ -n "$PENDRIVE_LABEL" ] && echo "Label esperada: $PENDRIVE_LABEL"
+}
+
+# =========================
+# Main
+# =========================
+case "$COMMAND" in
+    up|mount)
+        cmd_up
+        ;;
+    down|unmount)
+        cmd_down
+        ;;
+    status)
+        cmd_status
+        ;;
+    help|"")
+        show_help
+        ;;
+    *)
+        log_error "Comando desconhecido: $COMMAND"
+        show_help
+        exit 1
+        ;;
+esac

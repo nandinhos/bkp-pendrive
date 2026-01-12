@@ -1,0 +1,24 @@
+# Arquivos de sistema
+.DS_Store
+Thumbs.db
+
+# Configuração local do usuário
+config/local.conf
+
+# Logs
+*.log
+
+# Backups de editor
+*~
+*.swp
+*.swo
+*.bak
+
+# Diretórios de IDE
+.idea/
+.vscode/
+*.code-workspace
+
+# Arquivos temporários
+tmp/
+temp/
