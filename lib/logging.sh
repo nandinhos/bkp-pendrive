@@ -11,6 +11,7 @@ if [ -t 1 ]; then
     BOLD='\033[1m'
     NC='\033[0m'
 else
+    # shellcheck disable=SC2034 # These are used by other sourced files
     RED='' GREEN='' YELLOW='' BLUE='' CYAN='' BOLD='' NC=''
 fi
 

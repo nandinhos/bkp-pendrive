@@ -29,6 +29,7 @@ source "$PROJECT_ROOT/lib/mount_ext4.sh"
 # =========================
 CONFIG_FILE="$HOME/.config/usb-driver/config"
 if [ -f "$CONFIG_FILE" ]; then
+    # shellcheck source=/dev/null
     source "$CONFIG_FILE"
 fi
 
@@ -381,9 +382,10 @@ cmd_down() {
         echo -e "\n${CYAN}▶${NC} ${BOLD}Múltiplos dispositivos encontrados:${NC}\n" >&2
         local i=1
         for mnt in "${active_mounts[@]}"; do
-            local dev=$(findmnt -n -o SOURCE "$mnt")
-            local folder_name=$(basename "$mnt")
-            local base_path=$(dirname "$mnt")
+            local dev folder_name base_path
+            dev=$(findmnt -n -o SOURCE "$mnt")
+            folder_name=$(basename "$mnt")
+            base_path=$(dirname "$mnt")
             echo -e "  ${BOLD}[$i]${NC} ${YELLOW}${base_path}/${NC}${CYAN}${folder_name}${NC} (${dev})" >&2
             ((i++))
         done
@@ -424,8 +426,9 @@ cmd_status() {
     # Scan for both loop (HD) and USB mounts (including legacy path)
     while IFS= read -r mnt; do
         if [ -n "$mnt" ]; then
-            local dev=$(findmnt -n -o SOURCE "$mnt")
-            local fs=$(findmnt -n -o FSTYPE "$mnt")
+            local dev fs
+            dev=$(findmnt -n -o SOURCE "$mnt")
+            fs=$(findmnt -n -o FSTYPE "$mnt")
             log_success "Dispositivo: $dev -> $mnt ($fs)"
             found=true
         fi

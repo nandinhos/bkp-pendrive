@@ -15,6 +15,7 @@ if [ -t 1 ]; then
     DIM='\033[2m'
     NC='\033[0m'
 else
+    # shellcheck disable=SC2034 # Colors are used by other sourced files
     RED='' GREEN='' YELLOW='' BLUE='' CYAN='' MAGENTA='' BOLD='' DIM='' NC=''
 fi
 

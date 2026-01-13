@@ -96,7 +96,7 @@ health_check_usb_device() {
         # Check if there are USB storage devices in Windows that can be attached
         local win_devices
         win_devices=$(powershell.exe -NoProfile -Command "& '$USBIPD_EXE' list" 2>/dev/null | \
-            grep -i "Mass Storage\|Armazenamento\|UAS\|SCSI" | wc -l)
+            grep -ci "Mass Storage\|Armazenamento\|UAS\|SCSI" || echo 0)
         
         if [ "$win_devices" -gt 0 ]; then
             log_warn "Dispositivo USB no Windows, mas não anexado ao WSL"

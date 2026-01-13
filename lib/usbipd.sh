@@ -59,6 +59,7 @@ attach_usb() {
     local busid="$1"
     log_info "Anexando dispositivo USB (BUSID=$busid) ao WSL..."
     powershell.exe -NoProfile -Command "& '$USBIPD_EXE' bind --busid $busid; & '$USBIPD_EXE' attach --wsl --busid $busid" 2>&1
+    # shellcheck disable=SC2181 # Direct $? check is clearer here
     if [ $? -eq 0 ]; then
         log_success "Dispositivo anexado ao WSL"
         return 0

@@ -210,7 +210,7 @@ list_available_devices() {
         if [ -n "$mnt" ]; then
             if [[ "$mnt" == "$target_mnt"* ]]; then
                 # Show relative path if it's a subdirectory
-                local rel_mnt="${mnt#$target_mnt}"
+                local rel_mnt="${mnt#"$target_mnt"}"
                 rel_mnt="${rel_mnt#/}"
                 if [ -n "$rel_mnt" ]; then
                     status="${GREEN}Montado em $rel_mnt${NC}"
@@ -329,7 +329,7 @@ mount_ext4() {
     
     # Check if already mounted
     if mountpoint -q "$mount_point" 2>/dev/null; then
-        log_warn "Já existe algo montado em ${YELLOW}${MOUNT_POINT}/${NC}${CYAN}$(basename $mount_point)${NC}"
+        log_warn "Já existe algo montado em ${YELLOW}${MOUNT_POINT}/${NC}${CYAN}$(basename "$mount_point")${NC}"
         return 1
     fi
     
@@ -351,26 +351,27 @@ mount_ext4() {
             ;;
         ntfs|fuseblk)
             if command -v ntfs-3g &>/dev/null; then
-                sudo ntfs-3g "$device" "$mount_point" -o rw,uid=$(id -u),gid=$(id -g)
+                sudo ntfs-3g "$device" "$mount_point" -o "rw,uid=$(id -u),gid=$(id -g)"
             else
                 log_error "Driver ntfs-3g não encontrado. Por favor, instale-o: sudo apt install ntfs-3g"
                 return 1
             fi
             ;;
         vfat|exfat)
-            sudo mount "$device" "$mount_point" -o uid=$(id -u),gid=$(id -g)
+            sudo mount "$device" "$mount_point" -o "uid=$(id -u),gid=$(id -g)"
             ;;
         *)
             sudo mount "$device" "$mount_point"
             ;;
     esac
     
+    # shellcheck disable=SC2181 # Case statement prevents direct check
     if [ $? -ne 0 ]; then
         log_error "Falha ao montar $device"
         return 1
     fi
     
-    log_success "Pendrive montado em ${YELLOW}${MOUNT_POINT}/${NC}${CYAN}$(basename $mount_point)${NC} ($fstype)"
+    log_success "Pendrive montado em ${YELLOW}${MOUNT_POINT}/${NC}${CYAN}$(basename "$mount_point")${NC} ($fstype)"
     return 0
 }
 
@@ -380,7 +381,8 @@ find_busid_by_dev() {
     [ -z "$dev" ] && return 1
     
     # Get the parent disk if it's a partition
-    local disk=$(get_parent_disk "$dev")
+    local disk
+    disk=$(get_parent_disk "$dev")
     
     # Find the USB device path in sysfs for this disk
     local dev_link
@@ -423,6 +425,7 @@ safe_unmount() {
     local force=false
     local eject=false
     
+    # shellcheck disable=SC2034 # eject is reserved for future functionality
     # Parse remaining arguments
     for arg in "$@"; do
         case "$arg" in
@@ -471,6 +474,7 @@ safe_unmount() {
         sudo umount "$target_path"
     fi
     
+    # shellcheck disable=SC2181 # Conditional mount prevents direct check
     if [ $? -ne 0 ]; then
         log_error "Falha ao desmontar $target_path"
         return 1

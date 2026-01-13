@@ -56,6 +56,7 @@ SYMLINK="/usr/local/bin/$PROJECT_NAME"
 
 # Defaults
 DEFAULT_MOUNT_POINT="/mnt/usb-driver"
+# shellcheck disable=SC2034 # Reserved for future configuration
 DEFAULT_LABEL=""
 
 # Modes
@@ -96,6 +97,7 @@ run() {
         echo -e "${YELLOW}[DRY-RUN]${NC} $*"
         return 0
     fi
+    # shellcheck disable=SC2294 # Intentional eval for command execution
     eval "$@"
 }
 
