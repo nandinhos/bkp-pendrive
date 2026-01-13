@@ -37,10 +37,10 @@ print_step()    { echo -e "\n${CYAN}▶${NC} ${BOLD}$1${NC}"; }
 # =========================
 print_banner() {
     echo ""
-    echo -e "${CYAN}╔═══════════════════════════╗${NC}"
-    echo -e "${CYAN}║${NC}  ${BOLD}usb-driver${NC} Installer   ${CYAN}║${NC}"
-    echo -e "${CYAN}║${NC}  Pendrive USB no WSL2     ${CYAN}║${NC}"
-    echo -e "${CYAN}╚═══════════════════════════╝${NC}"
+    echo -e "${CYAN}╔══════════════════════════════════════╗${NC}"
+    echo -e "${CYAN}║${NC}         ${BOLD}usb-driver${NC} Installer         ${CYAN}║${NC}"
+    echo -e "${CYAN}║${NC}         Pendrive USB no WSL2         ${CYAN}║${NC}"
+    echo -e "${CYAN}╚══════════════════════════════════════╝${NC}"
     echo ""
 }
 

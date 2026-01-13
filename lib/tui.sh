@@ -33,8 +33,8 @@ print_step()    { echo -e "\n${CYAN}▶${NC} ${BOLD}$1${NC}"; }
 print_banner() {
     echo -e "${CYAN}"
     echo "╔══════════════════════════════════════╗"
-    echo "║        usb-driver Installer        ║"
-    echo "║     Pendrive EXT4 no WSL2            ║"
+    echo "║         usb-driver Installer         ║"
+    echo "║         Pendrive USB no WSL2         ║"
     echo "╚══════════════════════════════════════╝"
     echo -e "${NC}"
 }
