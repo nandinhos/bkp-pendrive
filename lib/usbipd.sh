@@ -1,8 +1,6 @@
 #!/bin/bash
 # lib/usbipd.sh - usbipd-win integration for usb-driver
-
-# Path to usbipd.exe on Windows (standard installation)
-USBIPD_EXE='C:\Program Files\usbipd-win\usbipd.exe'
+# Note: USBIPD_EXE is defined in lib/constants.sh
 
 # Check if usbipd is installed on Windows host
 check_usbipd_installed() {

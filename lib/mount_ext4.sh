@@ -1,9 +1,7 @@
 #!/bin/bash
 # lib/mount_ext4.sh - USB mount/unmount for usb-driver
 # Supports: EXT4, NTFS, FAT32, exFAT
-
-# Supported filesystems
-SUPPORTED_FS="ext4|ntfs|vfat|exfat|fuseblk"
+# Note: SUPPORTED_FS is defined in lib/constants.sh
 
 # Get parent disk for a partition (e.g., /dev/sdh1 -> /dev/sdh)
 get_parent_disk() {
@@ -247,16 +245,7 @@ list_available_devices() {
         busid=$(echo "$line" | awk '{print $1}')
         [[ ! "$busid" =~ ^[0-9]+-[0-9]+$ ]] && continue
 
-        if echo "$line" | grep -qi "Attached"; then
-            state="Attached"
-        elif echo "$line" | grep -qi "Not shared"; then
-            state="NotShared"
-        elif echo "$line" | grep -qi "Shared"; then
-            state="Shared"
-        else
-            # Default state extraction if none of above matches perfectly
-            state=$(echo "$line" | awk '{print $NF}')
-        fi
+        state=$(parse_usbipd_state "$line")
         
         # Skip if already attached
         [[ "$state" == "Attached" ]] && continue

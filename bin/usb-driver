@@ -18,6 +18,7 @@ PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
 # =========================
 # Source libraries
 # =========================
+source "$PROJECT_ROOT/lib/constants.sh"
 source "$PROJECT_ROOT/lib/logging.sh"
 source "$PROJECT_ROOT/lib/tui.sh"
 source "$PROJECT_ROOT/lib/checks.sh"
@@ -170,15 +171,7 @@ select_usb_device() {
         [[ ! "$busid" =~ ^[0-9]+-[0-9]+$ ]] && continue
         
         vidpid=$(echo "$line" | awk '{print $2}')
-        if echo "$line" | grep -qi "Attached"; then
-            state="Attached"
-        elif echo "$line" | grep -qi "Not shared"; then
-            state="NotShared"
-        elif echo "$line" | grep -qi "Shared"; then
-            state="Shared"
-        else
-            state=$(echo "$line" | awk '{print $NF}')
-        fi
+        state=$(parse_usbipd_state "$line")
         
         desc=$(echo "$line" | awk '{for(j=3;j<NF;j++) printf "%s ", $j}' | cut -c1-45)
 
