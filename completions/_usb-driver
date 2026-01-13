@@ -1,0 +1,50 @@
+#compdef usb-driver
+# usb-driver zsh completion
+
+_usb_driver() {
+    local -a commands options
+    
+    commands=(
+        'up:Monta dispositivo USB automaticamente'
+        'down:Desmonta dispositivo USB'
+        'status:Mostra status dos dispositivos montados'
+        'list:Lista dispositivos USB disponíveis'
+        'check:Verifica integridade do ambiente'
+        'install:Instala globalmente no sistema'
+        'attach:Anexa um BUSID específico ao WSL'
+        'help:Exibe o manual de ajuda'
+    )
+    
+    options=(
+        '(-s --select)'{-s,--select}'[Escolhe o dispositivo manualmente]'
+        '(-a --all)'{-a,--all}'[Monta todos sem perguntar]'
+        '--force[Força desmontagem mesmo sob uso]'
+        '--eject[Ejeta do WSL após desmontar]'
+        '--simulate[Modo de demonstração]'
+        '(-v --verbose)'{-v,--verbose}'[Detalhes adicionais de execução]'
+    )
+    
+    _arguments -s \
+        '1: :->command' \
+        '*: :->args' \
+        "${options[@]}"
+    
+    case $state in
+        command)
+            _describe -t commands 'usb-driver commands' commands
+            ;;
+        args)
+            case $words[2] in
+                attach)
+                    # Try to get available BUSIDs
+                    local -a busids
+                    busids=($(powershell.exe -NoProfile -Command "& 'C:\Program Files\usbipd-win\usbipd.exe' list" 2>/dev/null | \
+                        grep -E "^[0-9]+-[0-9]+" | awk '{print $1}' 2>/dev/null))
+                    _describe -t busids 'available BUSIDs' busids
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_usb_driver "$@"

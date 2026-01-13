@@ -155,6 +155,7 @@ detect_usb_device() {
 
 # List all available USB storage devices (for selection)
 list_available_devices() {
+    log_debug "Listing available devices (select_mode=$SELECT_MODE, simulate=$SIMULATE_MODE)"
     echo -e "\n${CYAN}▶${NC} ${BOLD}Dispositivos de Armazenamento USB Disponíveis${NC}\n" >&2
     
     # Header
@@ -234,6 +235,7 @@ list_available_devices() {
     fi
     
     # Also show Windows USB storage devices that can be attached
+    log_debug "Scanning Windows USB devices using usbipd..."
     echo -e "\n${CYAN}▶${NC} ${BOLD}Dispositivos USB no Windows (disponíveis para anexar)${NC}\n" >&2
     
     local win_count=0
@@ -441,6 +443,7 @@ safe_unmount() {
     sleep 2
     
     # Step 2: Check for processes
+    log_debug "Checking for processes using $target_path..."
     local procs
     procs=$(timeout 3 fuser -m "$target_path" 2>/dev/null || true)
     

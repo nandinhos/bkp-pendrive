@@ -9,6 +9,7 @@
 DEFAULT_MOUNT_POINT="/mnt/usb-driver"
 LEGACY_MOUNT_POINT="/mnt/bkp-pendrive"
 CONFIG_DIR="$HOME/.config/usb-driver"
+VERSION="0.9.0"
 
 # =========================
 # usbipd-win

@@ -20,3 +20,8 @@ log_success() { echo -e "${GREEN}[OK]${NC} $1"; }
 log_warn()    { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error()   { echo -e "${RED}[ERROR]${NC} $1" >&2; }
 log_hint()    { echo -e "       ${CYAN}→${NC} $1"; }
+log_debug()   {
+    if [[ "${VERBOSE_MODE:-false}" == "true" ]]; then
+        echo -e "${CYAN}[DEBUG]${NC} $1" >&2
+    fi
+}

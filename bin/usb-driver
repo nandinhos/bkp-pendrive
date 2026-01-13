@@ -107,6 +107,7 @@ show_help() {
     echo -e "  ${CYAN}--force${NC}         Força desmontagem mesmo sob uso"
     echo -e "  ${CYAN}--eject${NC}         Ejeta do WSL após desmontar"
     echo -e "  ${CYAN}--simulate${NC}      Executa em modo de demonstração"
+    echo -e "  ${CYAN}-v, --verbose${NC}   Mostra detalhes adicionais de execução"
     echo
     echo -e "${YELLOW}${BOLD}EXEMPLOS:${NC}"
     echo -e "  ${DIM}# Montar tudo automaticamente:${NC}"
@@ -128,6 +129,7 @@ show_help() {
 COMMAND=""
 BUSID_ARG=""
 SELECT_MODE=false
+VERBOSE_MODE=false
 EXTRA_FLAGS=()
 for arg in "$@"; do
     case "$arg" in
@@ -139,6 +141,9 @@ for arg in "$@"; do
             ;;
         --select|-s)
             SELECT_MODE=true
+            ;;
+        -v|--verbose)
+            VERBOSE_MODE=true
             ;;
         *)
             if [ -z "$COMMAND" ]; then
@@ -234,9 +239,12 @@ select_usb_device() {
 }
 cmd_up() {
     print_step "Iniciando montagem do dispositivo..."
-    log_info "usb-driver v0.6.6 - Iniciando montagem"
+    log_info "usb-driver v$VERSION - Iniciando montagem"
+    log_debug "MOUNT_POINT=$MOUNT_POINT"
+    log_debug "SELECT_MODE=$SELECT_MODE, VERBOSE_MODE=$VERBOSE_MODE"
     
     # 1. Health check (basics)
+    log_debug "Running health checks..."
     health_check_wsl || exit 1
     health_check_usbipd || exit 1
     
@@ -249,6 +257,7 @@ cmd_up() {
     fi
 
     # 2. Selection
+    log_debug "Starting device selection..."
     IFS=$'\n' read -d '' -r -a selections < <(select_usb_device) || true
     set -e
     
